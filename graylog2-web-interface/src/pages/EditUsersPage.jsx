@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Button } from 'react-bootstrap';
+import Reflux from 'reflux';
 
 import StoreProvider from 'injection/StoreProvider';
 const UsersStore = StoreProvider.getStore('Users');
@@ -10,14 +11,20 @@ import { DocumentTitle, PageHeader, Spinner } from 'components/common';
 import UserForm from 'components/users/UserForm';
 
 import UserPreferencesButton from 'components/users/UserPreferencesButton';
+import PermissionsMixin from 'util/PermissionsMixin';
+
+const CurrentUserStore = StoreProvider.getStore('CurrentUser');
 
 const EditUsersPage = React.createClass({
+  mixins: [Reflux.connect(CurrentUserStore), PermissionsMixin],
+
   propTypes: {
     params: PropTypes.object.isRequired,
   },
   getInitialState() {
     return {
       user: undefined,
+      tokens: [],
     };
   },
   componentDidMount() {
@@ -34,7 +41,34 @@ const EditUsersPage = React.createClass({
     UsersStore.load(username).then((user) => {
       this.setState({ user: user });
     });
+    this._loadTokens(username);
   },
+
+  _loadTokens(username) {
+    if (this._canListTokens(username)) {
+      UsersStore.loadTokens(username).then((tokens) => {
+        this.setState({ tokens: tokens });
+      });
+    } else {
+      this.setState({ tokens: [] });
+    }
+  },
+
+  _canListTokens(username) {
+    return this.isPermitted(this.state.currentUser.permissions,
+      [`users:tokenlist:${username}`]);
+  },
+
+  _deleteToken(token) {
+    const promise = UsersStore.deleteToken(this.state.user.username, token);
+    promise.then(() => this._loadTokens(this.state.user.username));
+  },
+
+  _createToken(tokenName) {
+    const promise = UsersStore.createToken(this.state.user.username, tokenName);
+    promise.then(() => this._loadTokens(this.state.user.username));
+  },
+
   _resetStartpage() {
     if (window.confirm('Are you sure you want to reset the start page?')) {
       const username = this.props.params.username;
@@ -70,7 +104,10 @@ const EditUsersPage = React.createClass({
             </div>
           </PageHeader>
 
-          <UserForm user={this.state.user} />
+          <UserForm user={this.state.user}
+                    tokens={this.state.tokens}
+                    deleteToken={this._deleteToken}
+                    createToken={this._createToken} />
         </span>
       </DocumentTitle>
     );

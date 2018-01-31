@@ -5,6 +5,7 @@ import { Button, Row, Col, Alert, Panel } from 'react-bootstrap';
 import Routes from 'routing/Routes';
 
 import { Input } from 'components/bootstrap';
+import TokenList from 'components/users/TokenList';
 import PermissionsMixin from 'util/PermissionsMixin';
 import UserNotification from 'util/UserNotification';
 import ValidationsUtils from 'util/ValidationsUtils';
@@ -27,6 +28,9 @@ import { IfPermitted, MultiSelect, TimezoneSelect, Spinner } from 'components/co
 const UserForm = React.createClass({
   propTypes: {
     user: PropTypes.object.isRequired,
+    tokens: PropTypes.arrayOf(PropTypes.object),
+    deleteToken: PropTypes.func,
+    createToken: PropTypes.func,
   },
   mixins: [PermissionsMixin, Reflux.connect(CurrentUserStore), Reflux.connect(DashboardsStore)],
   getInitialState() {
@@ -334,8 +338,8 @@ const UserForm = React.createClass({
                   <div className="form-group">
                     <Col smOffset={3} sm={9}>
                       <Button bsStyle="primary" type="submit" className="save-button-margin">
-                      Update Password
-                    </Button>
+                        Update Password
+                      </Button>
                       <Button onClick={this._onCancel}>Cancel</Button>
                     </Col>
                   </div>
@@ -343,6 +347,16 @@ const UserForm = React.createClass({
             }
           </Col>
         </Row>
+        <IfPermitted permissions={`users:tokenlist:${this.props.user.username}`}>
+          <Row>
+            <Col lg={8}>
+              <h2>Tokens</h2>
+              <TokenList tokens={this.props.tokens}
+                         delete={this.props.deleteToken}
+                         create={this.props.createToken} />
+            </Col>
+          </Row>
+        </IfPermitted>
         <IfPermitted permissions="users:rolesedit">
           <EditRolesForm user={this.props.user} />
         </IfPermitted>
